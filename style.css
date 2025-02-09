@@ -1,0 +1,434 @@
+/* 基础样式 */
+body {
+    background-color: #f0f2f5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 聊天容器 */
+.chat-container {
+    height: 70vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 1rem;
+    contain: content;
+}
+
+/* 消息气泡 */
+.user-msg {
+    background: #007bff;
+    color: white;
+    border-radius: 20px 20px 4px 20px;
+    max-width: 85%;
+    margin-left: auto;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 12px 15px;
+    align-self: flex-end;
+    order: unset !important;
+    animation: messageAppear 0.3s ease-out;
+    flex-shrink: 0;
+}
+
+.bot-msg {
+    background: #f8f9fa;
+    color: #1c1e21;
+    border-radius: 20px 20px 20px 4px;
+    max-width: 85%;
+    margin-right: auto;
+    margin-top: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin: 12px 15px;
+    align-self: flex-start;
+    order: unset !important;
+    animation: messageAppear 0.3s ease-out;
+    flex-shrink: 0;
+}
+
+/* 消息内容 */
+.msg-content {
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 12px;
+}
+
+/* 时间显示 */
+.msg-time {
+    font-size: 12px;
+    color: #90949c;
+    margin-top: 6px;
+}
+
+/* 输入区域 */
+.input-group {
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.03);
+    background: white;
+    border-radius: 12px;
+}
+
+#prompt {
+    border: none;
+    resize: none;
+    padding: 12px;
+    transition: height 0.2s ease-out;
+    min-height: 40px;
+    max-height: 120px;
+}
+
+#prompt:focus {
+    box-shadow: none;
+    background: #f8f9fa;
+}
+
+/* 按钮样式 */
+.btn-primary {
+    background: #007bff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+/* 模型选择器 */
+.form-select {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .chat-container {
+        height: 60vh;
+    }
+    
+    .user-msg, .bot-msg {
+        max-width: 90%;
+    }
+    
+    #temperature {
+        margin-top: 8px;
+        width: 70%;
+    }
+}
+
+/* 加载动画 */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #007bff;
+    border-top-color: transparent;
+    border-radius: 50%;
+}
+
+/* 优化加载动画 */
+#sendBtn .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+    margin-right: 8px;
+    vertical-align: -2px;
+}
+
+/* 输入框提示文字 */
+#prompt::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.error-msg {
+    background: #ffe3e3;
+    border: 1px solid #ffc9c9;
+    color: #d63939;
+    border-radius: 12px;
+    margin: 12px 15px;
+}
+
+.error-msg .msg-content {
+    padding: 12px 16px;
+}
+
+.loading-msg .msg-content {
+    opacity: 0.7;
+}
+
+/* 添加加载消息动画 */
+.loading-msg {
+    opacity: 0.8;
+    animation: pulse 1.5s infinite;
+    margin: 8px 15px;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+/* 控制台布局优化 */
+.card-header {
+    padding: 1rem 1.5rem;
+}
+
+#modelSelect {
+    background-color: white;
+    border-radius: 8px;
+}
+
+/* 温度参数标签 */
+#tempValue {
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* 温度滑块定制 */
+.form-range::-webkit-slider-thumb {
+    background: #007bff;
+}
+
+.form-range::-moz-range-thumb {
+    background: #007bff;
+}
+
+/* 参数标签美化 */
+.badge.bg-primary {
+    width: 40px;
+    border-radius: 10px;
+}
+
+@keyframes messageAppear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 禁用按钮样式 */
+#sendBtn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* 调整消息标题样式 */
+.msg-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    padding: 0 12px;
+}
+
+.user-header {
+    flex-direction: row-reverse;  /* 用户消息头部右对齐 */
+}
+
+/* 消息气泡样式 */
+.msg-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    background: #f0f2f5;
+    position: relative;
+    max-width: 80%;
+}
+
+.user-msg .msg-bubble {
+    background: #007bff;
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+}
+
+.bot-msg .msg-bubble {
+    background: #ffffff;
+    border-radius: 18px 18px 18px 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* 调整消息容器布局 */
+.user-msg, .bot-msg {
+    display: flex;
+    flex-direction: column;
+    margin: 8px 0;
+    width: 100%;
+}
+
+.user-msg {
+    align-items: flex-end;
+}
+
+.bot-msg {
+    align-items: flex-start;
+}
+
+/* 添加消息过渡动画 */
+.user-msg, .bot-msg {
+    animation: messageAppear 0.3s ease-out;
+    margin: 8px 0;
+}
+
+/* 修复时间戳颜色 */
+.msg-time {
+    color: #666;
+    font-size: 0.8em;
+}
+
+/* 增强错误提示 */
+.error-msg {
+    margin: 8px 15px;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* 消息容器布局 */
+.message-wrapper {
+    max-width: 78%;
+    margin: 12px 0;
+    position: relative;
+}
+
+.user-wrapper {
+    align-self: flex-end;
+    margin-right: 15px;
+}
+
+.bot-wrapper {
+    align-self: flex-start;
+    margin-left: 15px;
+}
+
+/* 消息头部布局 */
+.message-header {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+
+/* 发送者名称 */
+.sender {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #2d3748;
+    margin-bottom: 2px;
+}
+
+/* 时间戳样式 */
+.msg-time {
+    font-size: 0.75em;
+    color: #718096;
+    margin-top: 4px;
+}
+
+/* 消息气泡优化 */
+.message-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    position: relative;
+    line-height: 1.5;
+    word-break: break-word;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.user-bubble {
+    background: #007bff;
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+}
+
+.bot-bubble {
+    background: #ffffff;
+    border-radius: 18px 18px 18px 4px;
+    border: 1px solid #e2e8f0;
+}
+
+/* 用户消息特殊布局 */
+.user-wrapper .message-header {
+    align-items: flex-end;
+}
+
+.user-wrapper .sender {
+    color: #2b6cb0;
+}
+
+.user-wrapper .msg-time {
+    text-align: right;
+}
+
+/* 助手消息特殊布局 */
+.bot-wrapper .sender {
+    color: #2d3748;
+}
+
+/* 增加消息间距 */
+.chat-container {
+    gap: 16px;
+}
+
+/* 历史侧边栏样式 */
+#historySidebar {
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+}
+
+.history-item {
+    position: relative;
+    padding: 12px;
+    margin: 8px 0;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.history-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+
+.history-item.active {
+    border-left-color: #007bff;
+    background: linear-gradient(to right, #e3f2fd, white 30%);
+}
+
+.history-title {
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-right: 24px;
+}
+
+.history-time {
+    font-size: 0.75em;
+    color: #666;
+    margin-top: 4px;
+}
+
+.delete-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px;
+    font-size: 0.9em;
+}
+
+/* 调整主聊天区宽度 */
+.col-md-9 {
+    background: #fff;
+}

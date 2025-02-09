@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek-R1</title>
+    <link href="https://cdn.staticfile.org/bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        /* 自定义样式 */
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #f8f9fa;
+        }
+
+        .message-wrapper {
+            max-width: 80%;
+            margin: 12px 0;
+        }
+
+        .user-wrapper {
+            align-self: flex-end;
+            margin-right: 15px;
+        }
+
+        .bot-wrapper {
+            align-self: flex-start;
+            margin-left: 15px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .msg-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-break: break-word;
+        }
+
+        .user-bubble {
+            background: #007bff;
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        .bot-bubble {
+            background: white;
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 历史侧边栏样式 */
+        #historySidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .history-item {
+            position: relative;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item.active {
+            border-left: 3px solid #007bff;
+            background: #e3f2fd;
+        }
+
+        .delete-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid vh-100 p-0">
+        <div class="row g-0 h-100">
+            <!-- 历史侧边栏 -->
+            <div class="col-md-3 d-flex flex-column" id="historySidebar">
+                <div class="p-3 border-bottom bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">对话历史</h5>
+                        <button class="btn btn-sm btn-primary" onclick="newChat()">
+                            <i class="bi bi-plus-lg"></i> 开始新对话
+                        </button>
+                    </div>
+                </div>
+                <div id="historyList" class="flex-grow-1 overflow-auto p-3"></div>
+            </div>
+
+            <!-- 主聊天区 -->
+            <div class="col-md-9">
+                <div class="container py-4 h-100 d-flex flex-column">
+                    <div class="card shadow flex-grow-1">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">DeepSeek</h3>
+                            <div>
+                                <select class="form-select form-select-sm" id="modelSelect" style="width: 150px"></select>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body p-0 d-flex flex-column">
+                            <div class="chat-container" id="chatContainer"></div>
+                            
+                            <div class="input-group p-3 border-top">
+                                <textarea id="prompt" class="form-control" 
+                                        placeholder="输入消息，Shift+Enter换行..." 
+                                        rows="2"
+                                        onkeydown="handleKeyPress(event)"></textarea>
+                                <button class="btn btn-primary px-4" onclick="sendMessage()" id="sendBtn">
+                                    发送
+                                </button>
+                            </div>
+
+                            <div class="col-md-3 p-3">
+                                <label class="form-label">随机度：</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="range" id="temperature" class="form-range" 
+                                           min="0" max="1" step="0.1" value="0.7"
+                                           oninput="updateTempValue(this.value)">
+                                    <span class="badge bg-primary" id="tempValue">0.7</span>
+                                </div>
+                                <small class="text-muted">(0=保守, 1=创意)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 聊天历史管理
+        const chatHistory = {
+            currentChatId: localStorage.getItem('lastChatId') || null,
+            
+            get list() {
+                return JSON.parse(localStorage.getItem('chatHistory')) || [];
+            },
+            
+            saveChat(chat) {
+                let history = this.list;
+                const index = history.findIndex(c => c.id === chat.id);
+                if (index >= 0) {
+                    history[index] = chat;
+                } else {
+                    history.unshift(chat);
+                }
+                localStorage.setItem('chatHistory', JSON.stringify(history));
+                localStorage.setItem('lastChatId', chat.id);
+                this.renderHistory();
+            },
+
+            loadChat(chatId) {
+                const chat = this.list.find(c => c.id === chatId);
+                if (!chat) {
+                    console.error('找不到对话:', chatId);
+                    return;
+                }
+                
+                this.currentChatId = chatId;
+                const container = document.getElementById('chatContainer');
+                container.innerHTML = '';
+                
+                chat.messages.forEach(msg => {
+                    if (!msg.content || !msg.type) {
+                        console.warn('无效的历史消息:', msg);
+                        return;
+                    }
+                    addMessage(msg.content, msg.type, msg.time);
+                });
+                
+                autoScroll();
+                this.renderHistory();
+            },
+
+            deleteChat(chatId) {
+                if (!confirm('确定要删除这个对话吗？')) return;
+                
+                let history = this.list.filter(c => c.id !== chatId);
+                localStorage.setItem('chatHistory', JSON.stringify(history));
+                if (this.currentChatId === chatId) this.currentChatId = null;
+                this.renderHistory();
+            },
+
+            renderHistory() {
+                const container = document.getElementById('historyList');
+                container.innerHTML = this.list.map(chat => `
+                    <div class="history-item ${this.currentChatId === chat.id ? 'active' : ''}" 
+                         onclick="chatHistory.loadChat('${chat.id}')">
+                        <div class="history-title">${chat.title || '新对话'}</div>
+                        <div class="history-time">
+                            ${new Date(chat.timestamp).toLocaleString()}
+                        </div>
+                        <button class="btn btn-link text-danger delete-btn" 
+                                onclick="event.stopPropagation();chatHistory.deleteChat('${chat.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+        };
+
+        // 初始化模型列表
+        fetch('/api/models')
+            .then(r => r.json())
+            .then(models => {
+                const select = document.getElementById('modelSelect');
+                select.innerHTML = models.map(m => 
+                    `<option value="${m}">${m.split(':')[0]}</option>`
+                ).join('');
+            });
+
+        // 新建对话
+        function newChat() {
+            chatHistory.currentChatId = null;
+            const container = document.getElementById('chatContainer');
+            container.innerHTML = '';
+            localStorage.removeItem('lastChatId');
+            autoScroll();
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const promptInput = document.getElementById('prompt');
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            // 初始化新对话
+            if (!chatHistory.currentChatId) {
+                const newChat = {
+                    id: Date.now().toString(),
+                    title: prompt.substring(0, 20),
+                    messages: [],
+                    timestamp: Date.now()
+                };
+                chatHistory.saveChat(newChat);
+                chatHistory.currentChatId = newChat.id;
+            }
+
+            // 保存用户消息
+            const userTime = new Date().toLocaleTimeString('zh-CN', { 
+                hour12: false, 
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            addMessage(prompt, 'user', userTime);
+            
+            // 保存到历史
+            const currentChat = chatHistory.list.find(c => c.id === chatHistory.currentChatId);
+            currentChat.messages.push({
+                content: prompt,
+                type: 'user',
+                time: userTime
+            });
+
+            // 清空输入
+            promptInput.value = '';
+            promptInput.style.height = '40px';
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+
+            try {
+                // 添加加载状态
+                const tempId = 'loading-' + Date.now();
+                addLoadingMessage(tempId);
+
+                // 发送请求
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        model: document.getElementById('modelSelect').value,
+                        prompt: prompt,
+                        temperature: document.getElementById('temperature').value
+                    })
+                });
+                
+                // 处理响应
+                const data = await response.json();
+                console.log('API响应数据:', data); // 添加调试日志
+                
+                const botTime = new Date().toLocaleTimeString('zh-CN', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                // 增加数据校验
+                if (!data.response) {
+                    throw new Error('响应数据格式错误');
+                }
+
+                // 修改消息替换逻辑
+                const success = replaceLoadingMessage(tempId, data.response, botTime);
+                if (!success) {
+                    console.error('消息替换失败，检查元素ID:', tempId);
+                }
+
+                // 保存到历史记录时添加校验
+                if (currentChat) {
+                    currentChat.messages.push({
+                        content: data.response || '[空响应]',
+                        type: 'bot',
+                        time: botTime
+                    });
+                    chatHistory.saveChat(currentChat);
+                } else {
+                    console.error('当前对话不存在');
+                }
+
+            } catch (err) {
+                console.error('处理响应时出错:', err);
+                showErrorMessage(err.message);
+            } finally {
+                sendBtn.disabled = false;
+                autoScroll();
+            }
+        }
+
+        // 消息处理函数
+        function addMessage(content, type, time, tempId = null) {
+            // 添加内容校验
+            if (typeof content !== 'string') {
+                console.error('无效的消息内容:', content);
+                content = '[内容解析错误]'; // 提供默认值
+            }
+
+            const container = document.getElementById('chatContainer');
+            const isUser = type === 'user';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message-wrapper ${isUser ? 'user-wrapper' : 'bot-wrapper'}`;
+            
+            if (tempId) {
+                msgDiv.id = tempId;
+            }
+            
+            msgDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${isUser ? '无敌暴龙战士' : 'DeepSeek'}</span>
+                    <span>${time}</span>
+                </div>
+                <div class="msg-bubble ${isUser ? 'user-bubble' : 'bot-bubble'}">
+                    ${content.replace(/\n/g, '<br>')}
+                </div>
+            `;
+            
+            // 使用更可靠的插入方式
+            if (isUser) {
+                container.appendChild(msgDiv);
+            } else {
+                const loadingMsg = tempId ? document.getElementById(tempId) : null;
+                if (loadingMsg) {
+                    container.replaceChild(msgDiv, loadingMsg);
+                } else {
+                    container.appendChild(msgDiv);
+                }
+            }
+            
+            autoScroll();
+        }
+
+        // 辅助函数
+        function addLoadingMessage(id) {
+            const container = document.getElementById('chatContainer');
+            container.innerHTML += `
+                <div id="${id}" class="message-wrapper bot-wrapper">
+                    <div class="message-header">
+                        <span>DeepSeek</span>
+                        <span>正在输入...</span>
+                    </div>
+                    <div class="msg-bubble bot-bubble">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function replaceLoadingMessage(id, content, time) {
+            const loadingMsg = document.getElementById(id);
+            if (loadingMsg) {
+                loadingMsg.outerHTML = `
+                    <div class="message-wrapper bot-wrapper">
+                        <div class="message-header">
+                            <span>DeepSeek</span>
+                            <span>${time}</span>
+                        </div>
+                        <div class="msg-bubble bot-bubble">
+                            ${content.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+                return true;
+            }
+            return false;
+        }
+
+        function autoScroll() {
+            const container = document.getElementById('chatContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function updateTempValue(val) {
+            document.getElementById('tempValue').textContent = val;
+            localStorage.setItem('temperature', val);
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            // 清理无效历史记录
+            const validHistory = chatHistory.list.filter(chat => 
+                chat.messages.every(msg => msg.content && msg.type)
+            );
+            localStorage.setItem('chatHistory', JSON.stringify(validHistory));
+            
+            chatHistory.renderHistory();
+            if (chatHistory.currentChatId) {
+                chatHistory.loadChat(chatHistory.currentChatId);
+            }
+            const savedTemp = localStorage.getItem('temperature');
+            if (savedTemp) {
+                document.getElementById('temperature').value = savedTemp;
+                updateTempValue(savedTemp);
+            }
+        });
+    </script>
+</body>
+</html>
